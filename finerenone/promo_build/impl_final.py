@@ -79,6 +79,70 @@ def junctions(prs):
                 body.remove(p)
 
 
+def late(prs):
+    """Small fixes decided at the merge (old numbers)."""
+    # CREDENCE: 2.6 years is the median follow-up, the share is over the whole trial
+    L.rep(L.S(prs, 15), "первичный исход у 11,1% за 2,6 года",
+          "первичный исход у 11,1% пациентов (медиана наблюдения 2,6 года)")
+    # unconfirmed or too broad wording in the notes (old 27, 25, 32)
+    L.rep(L.S(prs, 27), "и только у него есть крупные исследования исходов", "и у него есть крупные исследования исходов",
+          notes=True)
+    L.rep(L.S(prs, 25), "Ответ: Рекомендации ESC и ERA 2026 по сердечно-сосудистым болезням и ХБП мы сверяем, класс и "
+                        "уровень назову после проверки.",
+          "Ответ: «Уточню в медицинском отделе и вернусь с ответом».", notes=True)
+    L.rep(L.S(prs, 32), "примерно каждые 4 месяца, KDIGO 2022 предлагает такой же интервал.", "примерно каждые 4 месяца.",
+          notes=True)
+    # sub-headings on the start-of-treatment slide (old 31): purple stays for finerenone only
+    from pptx.dml.color import RGBColor as _RGB
+    for needle in ("Калий сыворотки", "Начальная доза по функции почек"):
+        sh = L.shape_with(L.S(prs, 31), needle)
+        for p in sh.text_frame.paragraphs:
+            for r in p.runs:
+                if r.font.color and r.font.color.type is not None and str(r.font.color.rgb) == "7030A0":
+                    r.font.color.rgb = _RGB(0x15, 0x60, 0x82)
+    # instruction: at potassium <=5.0 restarting at 10 mg is «considered», not automatic (old 36, 39)
+    for n, a, b, notes in (
+            (36, "повторяют анализ и возобновляют с 10 мг", "повторяют анализ и рассматривают возобновление с 10 мг", False),
+            (36, "и лечение возобновляют с 10 мг", "и врач возобновляет лечение с 10 мг", True),
+            (39, "повторяют анализ и возобновляют с 10 мг", "повторяют анализ и рассматривают возобновление с 10 мг", False),
+            (39, "лечение возобновляют в дозе 10 мг", "врач может возобновить лечение в дозе 10 мг", False),
+            (39, "когда калий 5,0 и ниже, возобновляют с 10 мг", "когда калий 5,0 и ниже, врач может возобновить его с 10 мг",
+             True)):
+        try:
+            L.rep(L.S(prs, n), a, b, notes=notes)
+        except KeyError as e:
+            print("late: not found", n, e)
+    # last repeat on a junction and two language points (old 26, 29, 52 = H5)
+    L.rep(L.S(prs, 26), "В CONFIDENCE мы увидели, что финеренон и эмпаглифлозин вместе снижают альбуминурию сильнее, чем "
+                        "каждый по отдельности. Теперь посмотрим, как это выглядит в схеме лечения. ", "", notes=True)
+    L.rep(L.S(prs, 29), "Концентрация финеренона в крови повышается. Это может увеличивать риск гиперкалиемии.",
+          "Концентрация финеренона в крови повышается, и риск гиперкалиемии может расти.", notes=True)
+    L.rep(L.S(prs, 52), "не является экономической оценкой.", "не заменяет экономическую оценку.", notes=True)
+    # language: no sentence starts with «Это» (text exists only with fix2_09_16 applied)
+    try:
+        L.rep(L.S(prs, 14), "Это короткая памятка:", "Короткая памятка:", notes=True)
+    except KeyError:
+        pass
+
+
+def tidy_notes(prs):
+    """No empty paragraphs at the start or end of the notes."""
+    from pptx.oxml.ns import qn
+    for s in prs.slides:
+        if not s.has_notes_slide:
+            continue
+        body = s.notes_slide.notes_text_frame._txBody
+        for end in (0, -1):
+            while True:
+                ps = body.findall(qn("a:p"))
+                if len(ps) < 2:
+                    break
+                p = ps[end]
+                if "".join(t.text or "" for t in p.iter(qn("a:t"))).strip():
+                    break
+                body.remove(p)
+
+
 def footers(prs):
     """Sources 8 pt black, abbreviations black (size kept), no hyperlinks."""
     for s in prs.slides:
@@ -135,6 +199,8 @@ def checks(prs):
 
 def run(prs):
     junctions(prs)
+    late(prs)
+    tidy_notes(prs)
     footers(prs)
     logos(prs)
     reorder(prs)
