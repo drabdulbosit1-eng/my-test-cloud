@@ -31,9 +31,9 @@ CONTENT_W = SLIDE_W - 2 * MX
 TITLE_Y = Inches(0.42)
 TITLE_H = Inches(1.05)
 BODY_Y = Inches(1.65)
-BODY_BOTTOM = Inches(6.05)
-EVID_Y = Inches(6.1)
-SRC_Y = Inches(6.36)
+BODY_BOTTOM = Inches(5.95)
+EVID_Y = Inches(6.02)
+SRC_Y = Inches(6.3)
 RULER_Y = Inches(6.86)
 
 SIZE_TITLE = Pt(28)

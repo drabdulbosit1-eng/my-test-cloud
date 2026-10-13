@@ -133,7 +133,8 @@ def centile_panel(shapes, x, y, w, h, sex, t0, t1, kind, patient, events=(), lab
     vmin = min(lo + pz)
     vmax = max(hi + pz)
     pad = (vmax - vmin) * 0.06
-    P = Panel(x, y, w, h, t0, t1, vmin - pad, vmax + pad)
+    extra = (vmax - vmin) * 0.18 * len(events)   # место для подписей событий над кривыми
+    P = Panel(x, y, w, h, t0, t1, vmin - pad, vmax + pad + extra)
 
     # полоса 3–97-го центиля
     band = [(P.px(t), P.py(v)) for t, v in zip(ts, hi)] + \
@@ -182,8 +183,13 @@ def centile_panel(shapes, x, y, w, h, sex, t0, t1, kind, patient, events=(), lab
         a, text = ev[0], ev[1]
         _line(shapes, [(P.px(a), P.y), (P.px(a), P.y + P.h)], C['muted'], 0.75,
               dash=MSO_LINE_DASH_STYLE.DASH, name=f'событие {a}')
-        _label(shapes, P.px(a) + Emu(50000), P.y + i * Emu(190000), Emu(1600000), Emu(190000), text, size=10,
-               color=C['text'], anchor=MSO_ANCHOR.TOP)
+        lw = Emu(2300000)
+        if P.px(a) + Emu(50000) + lw <= P.x + P.w:
+            _label(shapes, P.px(a) + Emu(50000), P.y + i * Emu(190000), lw, Emu(190000), text, size=10,
+                   color=C['text'], anchor=MSO_ANCHOR.TOP)
+        else:
+            _label(shapes, P.px(a) - Emu(50000) - lw, P.y + i * Emu(190000), lw, Emu(190000), text, size=10,
+                   color=C['text'], anchor=MSO_ANCHOR.TOP, align=PP_ALIGN.RIGHT)
 
     if label:
         _label(shapes, P.x, P.y - Emu(230000), P.w, Emu(200000), label, size=12, color=C['text'],

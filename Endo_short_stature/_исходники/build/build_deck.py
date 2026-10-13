@@ -36,6 +36,7 @@ def typo(s):
     s = re.sub(r'([<>≤≥=±−]) (?=[\d−])', r'\1' + NB, s)
     s = re.sub(r'(\bn|\bр|\bp) ([=<>])', r'\1' + NB + r'\2', s)
     s = re.sub(r'(\d) (–|−) (\d)', r'\1\2\3', s)
+    s = re.sub(r'(\d)–(\d)', '\\1–\u2060\\2', s)   # не разрывать диапазон «3–6»
     s = s.replace('св. Т4', 'св.' + NB + 'Т4')
     return s
 
@@ -91,11 +92,16 @@ def space_after(par, pt):
     par.space_after = Pt(pt)
 
 
+def title_size(text):
+    n = len(text)
+    return Pt(28) if n <= 80 else (Pt(25) if n <= 90 else Pt(23))
+
+
 def title(slide, text, dark=False):
     tb, tf = textbox(slide.shapes, MX, TITLE_Y, CONTENT_W, TITLE_H, anchor=MSO_ANCHOR.TOP, name='Заголовок')
     p = tf.paragraphs[0]
     p.line_spacing = 0.95
-    add_runs(p, text, SIZE_TITLE, C['onink'] if dark else C['ink'], font=FONT_HEAD, bold=True)
+    add_runs(p, text, title_size(text), C['onink'] if dark else C['ink'], font=FONT_HEAD, bold=True)
 
 
 def bullets(slide, items, x, y, w, h, size=SIZE_BODY, color=None, gap=10):
@@ -112,14 +118,26 @@ def bullets(slide, items, x, y, w, h, size=SIZE_BODY, color=None, gap=10):
 
 
 def footer(slide, n, evidence, source, dark=False):
+    """Уровень доказательности и источник одним блоком, прижатым к ростомеру."""
     col = C['onink2'] if dark else C['muted']
-    if evidence:
-        tb, tf = textbox(slide.shapes, MX, EVID_Y, CONTENT_W, Inches(0.26), name='Уровень доказательности')
-        add_runs(tf.paragraphs[0], evidence, SIZE_EVID, col)
-        tf.paragraphs[0].runs[0].font.italic = True if tf.paragraphs[0].runs else None
-    if source:
-        tb, tf = textbox(slide.shapes, MX, SRC_Y, CONTENT_W, Inches(0.42), name='Источник')
-        add_runs(tf.paragraphs[0], source, SIZE_SRC, col)
+    if evidence or source:
+        tb, tf = textbox(slide.shapes, MX, Inches(5.98), CONTENT_W, Inches(0.74), anchor=MSO_ANCHOR.BOTTOM,
+                         name='Доказательность и источник')
+        first = True
+        if evidence:
+            ln_ = len(evidence)
+            sz = Pt(12) if ln_ <= 150 else (Pt(11) if ln_ <= 175 else Pt(10))
+            p = tf.paragraphs[0]
+            first = False
+            p.space_after = Pt(2)
+            add_runs(p, evidence, sz, col)
+            for r in p.runs:
+                r.font.italic = True
+        if source:
+            ln_ = len(source)
+            sz = Pt(10) if ln_ <= 210 else (Pt(9) if ln_ <= 330 else Pt(8))
+            p = tf.paragraphs[0] if first else tf.add_paragraph()
+            add_runs(p, source, sz, col)
     ruler(slide, n, dark)
 
 
@@ -215,9 +233,14 @@ def table(slide, spec, x, y, w, h, size=SIZE_TABLE, col_w=None):
     return gt
 
 
+def table_size(tbl):
+    chars = sum(len(str(c)) for r in tbl['rows'] for c in r)
+    return Pt(15) if chars <= 420 else (Pt(14) if chars <= 600 else Pt(13))
+
+
 def notes(slide, text):
     if text:
-        slide.notes_slide.notes_text_frame.text = text
+        slide.notes_slide.notes_text_frame.text = typo(text).replace('*', '')
 
 
 def caption(slide, x, y, w, text='схема, а не данные конкретного пациента'):
@@ -300,14 +323,14 @@ def s_content(prs, d):
                 size=Pt(18))
     elif fig and fig['type'] == 'two_growth':
         half = (CONTENT_W - Inches(0.5)) / 2
-        h = bottom - top - Inches(0.62) - (Inches(0.55) if items else 0)
+        h = bottom - top - Inches(0.62) - (Inches(0.2) + Inches(0.36) * len(items) if items else 0)
         for i, g in enumerate(fig['charts']):
             growth.growth_chart(s.shapes, MX + i * (half + Inches(0.5)), top, half, h, g['sex'], g['t0'], g['t1'],
                                 g['hz'], g['wz'], g.get('events', ()), title=g['title'])
         legend(s, MX, top + h + Inches(0.27))
         caption(s, MX + Inches(6.9), top + h + Inches(0.27), Inches(5.2))
         if items:
-            bullets(s, items, MX, top + h + Inches(0.62), CONTENT_W, Inches(0.6), size=Pt(17), gap=4)
+            bullets(s, items, MX, top + h + Inches(0.62), CONTENT_W, Inches(0.36) * len(items), size=Pt(17), gap=4)
     elif fig and fig['type'] == 'thumbs':
         cols, rows_ = fig.get('cols', 3), fig.get('rows', 2)
         gw, gh = Inches(0.35), Inches(0.25)
@@ -318,8 +341,8 @@ def s_content(prs, d):
             growth.z_thumb(s.shapes, MX + c * (tw + gw), top + r * (th + gh), tw, th, t['title'], t['t0'], t['t1'],
                            t['hz'], t['wz'], t.get('note'))
         # легенда
-        for i, (col, txt) in enumerate(((C['height'], 'рост, СО'), (C['weight'], 'масса, СО'),
-                                        (C['band'], 'от −2 до +2 СО'))):
+        for i, (col, txt) in enumerate(((C['height'], 'рост'), (C['weight'], 'масса'),
+                                        (C['band'], 'коридор нормы'))):
             rr = s.shapes.add_shape(1, int(MX + Inches(2.0) * i), int(bottom - Inches(0.22)), int(Inches(0.3)),
                                     int(Inches(0.1)))
             rr.fill.solid()
@@ -333,12 +356,12 @@ def s_content(prs, d):
     elif tbl and items:
         nrows = len(tbl['rows']) + 1
         th = min(bottom - top - Inches(1.2), Inches(0.5) * nrows + Inches(0.3))
-        table(s, tbl, MX, top, CONTENT_W, th, col_w=d.get('col_w'))
+        table(s, tbl, MX, top, CONTENT_W, th, size=table_size(tbl), col_w=d.get('col_w'))
         bullets(s, items, MX, top + th + Inches(0.3), CONTENT_W, bottom - top - th - Inches(0.3), size=Pt(17), gap=4)
     elif tbl:
         nrows = len(tbl['rows']) + 1
         th = min(bottom - top, Inches(0.62) * nrows)
-        table(s, tbl, MX, top, CONTENT_W, th, col_w=d.get('col_w'))
+        table(s, tbl, MX, top, CONTENT_W, th, size=table_size(tbl), col_w=d.get('col_w'))
     else:
         call = d.get('callout')
         if call:
