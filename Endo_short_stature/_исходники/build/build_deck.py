@@ -118,26 +118,15 @@ def bullets(slide, items, x, y, w, h, size=SIZE_BODY, color=None, gap=10):
 
 
 def footer(slide, n, evidence, source, dark=False):
-    """Уровень доказательности и источник одним блоком, прижатым к ростомеру."""
+    """Источник, прижатый к ростомеру. Уровень доказательности на слайд не выводится:
+    он остаётся в JSON и в таблице источников (лист «Слайды»)."""
     col = C['onink2'] if dark else C['muted']
-    if evidence or source:
+    if source:
         tb, tf = textbox(slide.shapes, MX, Inches(5.98), CONTENT_W - Inches(0.7), Inches(0.74), anchor=MSO_ANCHOR.BOTTOM,
-                         name='Доказательность и источник')
-        first = True
-        if evidence:
-            ln_ = len(evidence)
-            sz = Pt(12) if ln_ <= 150 else (Pt(11) if ln_ <= 175 else Pt(10))
-            p = tf.paragraphs[0]
-            first = False
-            p.space_after = Pt(2)
-            add_runs(p, evidence, sz, col)
-            for r in p.runs:
-                r.font.italic = True
-        if source:
-            ln_ = len(source)
-            sz = Pt(10) if ln_ <= 210 else (Pt(9) if ln_ <= 330 else Pt(8))
-            p = tf.paragraphs[0] if first else tf.add_paragraph()
-            add_runs(p, source, sz, col)
+                         name='Источник')
+        ln_ = len(source)
+        sz = Pt(10) if ln_ <= 210 else (Pt(9) if ln_ <= 330 else Pt(8))
+        add_runs(tf.paragraphs[0], source, sz, col)
     ruler(slide, n, dark)
 
 
