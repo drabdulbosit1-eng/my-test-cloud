@@ -233,6 +233,27 @@ def table(slide, spec, x, y, w, h, size=SIZE_TABLE, col_w=None):
     return gt
 
 
+def est_table_h(tbl, w, size, col_w=None):
+    """Оценка высоты таблицы после переноса строк (дюймы → EMU)."""
+    import math
+    header, rows = tbl['header'], tbl['rows']
+    nc = len(header)
+    cw = col_w or [1] * nc
+    tot = sum(cw)
+    widths = [w / 914400 * c / tot - 0.18 for c in cw]
+    char_w = size.pt / 72 * 0.5
+    line_h = size.pt / 72 * 1.2
+    total = 0.0
+    for r in [header] + rows:
+        lines = 1
+        for c in range(nc):
+            txt = str(r[c]) if c < len(r) else ''
+            per = max(1, int(widths[c] / char_w))
+            lines = max(lines, math.ceil(max(1, len(txt)) / per))
+        total += lines * line_h + 0.1
+    return Inches(total)
+
+
 def table_size(tbl):
     chars = sum(len(str(c)) for r in tbl['rows'] for c in r)
     return Pt(15) if chars <= 420 else (Pt(14) if chars <= 600 else Pt(13))
@@ -334,7 +355,8 @@ def s_content(prs, d):
     elif fig and fig['type'] == 'thumbs':
         cols, rows_ = fig.get('cols', 3), fig.get('rows', 2)
         gw, gh = Inches(0.35), Inches(0.25)
-        tw = (CONTENT_W - gw * (cols - 1)) / cols
+        area_w = CONTENT_W - (Inches(3.9) if items else 0)
+        tw = (area_w - gw * (cols - 1)) / cols
         th = (bottom - top - Inches(0.35) - gh * (rows_ - 1)) / rows_
         for i, t in enumerate(fig['items']):
             r, c = divmod(i, cols)
@@ -352,16 +374,27 @@ def s_content(prs, d):
             tb, tf = textbox(s.shapes, MX + Inches(2.0) * i + Inches(0.38), bottom - Inches(0.29), Inches(1.6),
                              Inches(0.24), name='Легенда')
             add_runs(tf.paragraphs[0], txt, Pt(11), C['muted'])
-        caption(s, MX + Inches(6.4), bottom - Inches(0.29), Inches(5.7))
+        caption(s, MX + Inches(5.6), bottom - Inches(0.29), Inches(4.0))
+        if items:
+            bullets(s, items, MX + area_w + Inches(0.4), top + Inches(0.2), CONTENT_W - area_w - Inches(0.4),
+                    bottom - top - Inches(0.6), size=Pt(17))
     elif tbl and items:
-        nrows = len(tbl['rows']) + 1
-        th = min(bottom - top - Inches(1.2), Inches(0.5) * nrows + Inches(0.3))
-        table(s, tbl, MX, top, CONTENT_W, th, size=table_size(tbl), col_w=d.get('col_w'))
-        bullets(s, items, MX, top + th + Inches(0.3), CONTENT_W, bottom - top - th - Inches(0.3), size=Pt(17), gap=4)
+        size = table_size(tbl)
+        bh = Inches(0.34) * len(items) + Inches(0.1)
+        th = est_table_h(tbl, CONTENT_W, size, d.get('col_w'))
+        while th > bottom - top - bh - Inches(0.2) and size.pt > 12:
+            size = Pt(size.pt - 1)
+            th = est_table_h(tbl, CONTENT_W, size, d.get('col_w'))
+        table(s, tbl, MX, top, CONTENT_W, th, size=size, col_w=d.get('col_w'))
+        by = min(top + th + Inches(0.3), bottom - bh)
+        bullets(s, items, MX, by, CONTENT_W, bottom - by, size=Pt(16), gap=3)
     elif tbl:
-        nrows = len(tbl['rows']) + 1
-        th = min(bottom - top, Inches(0.62) * nrows)
-        table(s, tbl, MX, top, CONTENT_W, th, size=table_size(tbl), col_w=d.get('col_w'))
+        size = table_size(tbl)
+        th = est_table_h(tbl, CONTENT_W, size, d.get('col_w'))
+        while th > bottom - top and size.pt > 12:
+            size = Pt(size.pt - 1)
+            th = est_table_h(tbl, CONTENT_W, size, d.get('col_w'))
+        table(s, tbl, MX, top, CONTENT_W, min(th, bottom - top), size=size, col_w=d.get('col_w'))
     else:
         call = d.get('callout')
         if call:
@@ -384,15 +417,20 @@ def s_refs(prs, d):
     background(s, C['paper'])
     title(s, d['title'])
     items = d.get('body') or []
-    half = (len(items) + 1) // 2
-    colw = (CONTENT_W - Inches(0.4)) / 2
-    for i, chunk in enumerate((items[:half], items[half:])):
-        tb, tf = textbox(s.shapes, MX + i * (colw + Inches(0.4)), BODY_Y - Inches(0.2), colw,
-                         RULER_Y - BODY_Y - Inches(0.05), name='Литература')
+    ncol = 3 if len(items) > 30 else 2
+    size = Pt(8) if len(items) <= 60 else Pt(7)
+    per = (len(items) + ncol - 1) // ncol
+    gap = Inches(0.3)
+    colw = (CONTENT_W - gap * (ncol - 1)) / ncol
+    for i in range(ncol):
+        chunk = items[i * per:(i + 1) * per]
+        tb, tf = textbox(s.shapes, MX + i * (colw + gap), BODY_Y - Inches(0.35), colw,
+                         RULER_Y - BODY_Y + Inches(0.2), name='Литература')
         for j, ref in enumerate(chunk):
             p = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
-            p.space_after = Pt(1)
-            add_runs(p, ref, Pt(8), C['text'])
+            p.space_after = Pt(0.5)
+            p.line_spacing = 0.95
+            add_runs(p, ref, size, C['text'])
     ruler(s, d['n'])
     notes(s, d.get('notes'))
     return s
