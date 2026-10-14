@@ -18,7 +18,7 @@ from pptx.util import Emu, Inches, Pt
 
 sys.path.insert(0, os.path.dirname(__file__))
 from style import (BODY_BOTTOM, BODY_Y, C, CONTENT_W, EVID_Y, FONT_BODY, FONT_HEAD, MX, PARTS, RULER_Y,
-                   SIZE_BODY, SIZE_EVID, SIZE_SRC, SIZE_TABLE, SIZE_TITLE, SLIDE_H, SLIDE_W, SRC_Y,
+                   SIZE_BODY, SIZE_EVID, SIZE_SRC, SIZE_TABLE, SIZE_TITLE, SLIDE_H, SLIDE_W, SRC_H, SRC_TOP, SRC_Y,
                    TITLE_H, TITLE_Y, TOTAL)
 import growth
 from figures import FIGS
@@ -118,16 +118,14 @@ def bullets(slide, items, x, y, w, h, size=SIZE_BODY, color=None, gap=10):
 
 
 def footer(slide, n, evidence, source, dark=False):
-    """Источник, прижатый к ростомеру. Уровень доказательности на слайд не выводится:
-    он остаётся в JSON и в таблице источников (лист «Слайды»)."""
+    """Только строка источника внизу. По правке автора нет ни строки доказательности,
+    ни шкалы разделов, ни номера слайда; уровень доказательности — в таблице источников."""
     col = C['onink2'] if dark else C['muted']
     if source:
-        tb, tf = textbox(slide.shapes, MX, Inches(5.98), CONTENT_W - Inches(0.7), Inches(0.74), anchor=MSO_ANCHOR.BOTTOM,
-                         name='Источник')
+        tb, tf = textbox(slide.shapes, MX, SRC_TOP, CONTENT_W, SRC_H, anchor=MSO_ANCHOR.BOTTOM, name='Источник')
         ln_ = len(source)
-        sz = Pt(10) if ln_ <= 210 else (Pt(9) if ln_ <= 330 else Pt(8))
+        sz = Pt(10) if ln_ <= 260 else (Pt(9) if ln_ <= 380 else Pt(8))
         add_runs(tf.paragraphs[0], source, sz, col)
-    ruler(slide, n, dark)
 
 
 def ruler(slide, n, dark=False):
@@ -260,7 +258,7 @@ def caption(slide, x, y, w, text='схема, а не данные конкре�
 
 
 def legend(slide, x, y):
-    for i, (col, txt) in enumerate(((C['height'], 'пациент: рост'), (C['weight'], 'пациент: масса'),
+    for i, (col, txt) in enumerate(((C['height'], 'пример: рост'), (C['weight'], 'пример: масса'),
                                     (C['band'], 'норма: 3–97-й центиль'))):
         r = slide.shapes.add_shape(1, int(x + Inches(2.2) * i), int(y + Inches(0.07)), int(Inches(0.3)),
                                    int(Inches(0.1)))
@@ -276,27 +274,45 @@ def legend(slide, x, y):
 
 # ---------- типы слайдов ----------
 
+LOGO = os.path.join(os.path.dirname(__file__), '..', 'версия_автора', 'рисунки', 'логотип.png')
+
+
 def s_title(prs, d):
+    """Титул по образцу автора: логотип, название, имя и специальность."""
     s = prs.slides.add_slide(prs.slide_layouts[6])
-    background(s, C['ink'])
+    background(s, C['paper'])
     sh = s.shapes
-    # мотив: одна центильная кривая
-    P = growth.Panel(int(Inches(0.0)), int(Inches(3.9)), int(SLIDE_W), int(Inches(2.6)), 2, 18, 80, 185)
-    for z, col, wpt in ((1.88, C['onink2'], 0.75), (0, C['onink2'], 0.75), (-1.88, C['onink2'], 0.75)):
-        pts = [(P.px(t), P.py(growth.height('M', t, z))) for t in [2 + i * 16 / 60 for i in range(61)]]
-        ln = growth._line(sh, pts, col, wpt, name='Мотив: центиль')
-    pts = []
-    for t in [2 + i * 16 / 60 for i in range(61)]:
-        z = -0.2 if t < 9 else (-0.2 - (t - 9) * 0.35 if t < 13 else -1.6 + (t - 13) * 0.3)
-        pts.append((P.px(t), P.py(growth.height('M', t, z))))
-    growth._line(sh, pts, C['weight'], 2.5, name='Мотив: пациент')
-    tb, tf = textbox(sh, MX, Inches(1.0), CONTENT_W, Inches(1.9), anchor=MSO_ANCHOR.BOTTOM, name='Название')
-    add_runs(tf.paragraphs[0], d['title'], Pt(40), C['onink'], font=FONT_HEAD, bold=True)
+    pic = sh.add_picture(LOGO, int(MX), int(Inches(0.9)), width=int(Inches(5.2)))
+    pic.name = 'Логотип'
+    tb, tf = textbox(sh, MX, Inches(3.35), Inches(10.5), Inches(1.75), anchor=MSO_ANCHOR.BOTTOM, name='Название')
+    p = tf.paragraphs[0]
+    p.line_spacing = 0.95
+    add_runs(p, d['title'], Pt(38), C['ink'], font=FONT_HEAD, bold=True)
     body = d.get('body') or []
-    tb, tf = textbox(sh, MX, Inches(3.05), CONTENT_W, Inches(1.0), name='Подзаголовок')
+    tb, tf = textbox(sh, MX, Inches(5.45), Inches(10.5), Inches(1.0), name='Автор')
     for i, line in enumerate(body):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        add_runs(p, line, Pt(18), C['onink2'])
+        add_runs(p, line, Pt(20) if i == 0 else Pt(16), C['text'] if i == 0 else C['muted'], bold=(i == 0))
+    notes(s, d.get('notes'))
+    return s
+
+
+def s_thanks(prs, d):
+    """Последний слайд по образцу автора."""
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, C['paper'])
+    sh = s.shapes
+    tb, tf = textbox(sh, MX, Inches(2.0), CONTENT_W, Inches(1.0), anchor=MSO_ANCHOR.BOTTOM, name='Заголовок')
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    add_runs(p, d['title'], Pt(40), C['ink'], font=FONT_HEAD, bold=True)
+    body = d.get('body') or []
+    tb, tf = textbox(sh, Inches(2.4), Inches(3.9), Inches(4.2), Inches(1.2), anchor=MSO_ANCHOR.MIDDLE, name='Контакт')
+    for i, line in enumerate(body):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        add_runs(p, line, Pt(26) if i == 0 else Pt(18), C['text'] if i == 0 else C['muted'])
+    pic = sh.add_picture(LOGO, int(Inches(7.1)), int(Inches(3.75)), width=int(Inches(3.9)))
+    pic.name = 'Логотип'
     notes(s, d.get('notes'))
     return s
 
@@ -317,7 +333,7 @@ def s_content(prs, d):
     background(s, C['paper'])
     title(s, d['title'])
     n = d['n']
-    fig = FIGS.get(n)
+    fig = d.get('figure') or FIGS.get(n)
     items = d.get('body') or []
     tbl = d.get('table')
     if tbl and not tbl.get('rows'):
@@ -328,7 +344,6 @@ def s_content(prs, d):
         growth.growth_chart(s.shapes, fx, top, fw, bottom - top - Inches(0.85), fig['sex'], fig['t0'], fig['t1'],
                             fig['hz'], fig['wz'], fig.get('events', ()))
         legend(s, fx, bottom - Inches(0.52))
-        caption(s, fx, bottom - Inches(0.25), fw)
         bullets(s, items, MX + Inches(7.75), top + Inches(0.2), CONTENT_W - Inches(7.75), bottom - top - Inches(0.2),
                 size=Pt(18))
     elif fig and fig['type'] == 'two_growth':
@@ -338,7 +353,6 @@ def s_content(prs, d):
             growth.growth_chart(s.shapes, MX + i * (half + Inches(0.5)), top, half, h, g['sex'], g['t0'], g['t1'],
                                 g['hz'], g['wz'], g.get('events', ()), title=g['title'])
         legend(s, MX, top + h + Inches(0.27))
-        caption(s, MX + Inches(6.9), top + h + Inches(0.27), Inches(5.2))
         if items:
             bullets(s, items, MX, top + h + Inches(0.62), CONTENT_W, Inches(0.36) * len(items), size=Pt(17), gap=4)
     elif fig and fig['type'] == 'thumbs':
@@ -363,7 +377,6 @@ def s_content(prs, d):
             tb, tf = textbox(s.shapes, MX + Inches(2.0) * i + Inches(0.38), bottom - Inches(0.29), Inches(1.6),
                              Inches(0.24), name='Легенда')
             add_runs(tf.paragraphs[0], txt, Pt(11), C['muted'])
-        caption(s, MX + Inches(5.6), bottom - Inches(0.29), Inches(4.0))
         if items:
             bullets(s, items, MX + area_w + Inches(0.4), top + Inches(0.2), CONTENT_W - area_w - Inches(0.4),
                     bottom - top - Inches(0.6), size=Pt(17))
@@ -397,6 +410,18 @@ def s_content(prs, d):
         else:
             bullets(s, items, MX, top + Inches(0.15), Inches(10.5), bottom - top - Inches(0.15))
     footer(s, n, d.get('evidence'), d.get('source'))
+    notes(s, d.get('notes'))
+    return s
+
+
+def s_diagram(prs, d):
+    """Слайд-схема механизма (diagrams.py)."""
+    import diagrams
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, C['paper'])
+    title(s, d['title'])
+    diagrams.DRAW[d['diagram']['kind']](s, d)
+    footer(s, d['n'], None, d.get('source'))
     notes(s, d.get('notes'))
     return s
 
@@ -442,6 +467,10 @@ def build(folder, out):
         lay = d.get('layout')
         if d['n'] == 1 or lay == 'title':
             s_title(prs, d)
+        elif lay == 'thanks':
+            s_thanks(prs, d)
+        elif lay == 'diagram':
+            s_diagram(prs, d)
         elif lay == 'references':
             s_refs(prs, d)
         elif lay == 'conclusions':

@@ -31,10 +31,12 @@ CONTENT_W = SLIDE_W - 2 * MX
 TITLE_Y = Inches(0.42)
 TITLE_H = Inches(1.05)
 BODY_Y = Inches(1.65)
-BODY_BOTTOM = Inches(5.95)
+BODY_BOTTOM = Inches(6.3)
 EVID_Y = Inches(6.02)
 SRC_Y = Inches(6.3)
-RULER_Y = Inches(6.86)
+RULER_Y = Inches(6.86)       # шкала снята по правке автора; константа для старых типов слайдов
+SRC_TOP = Inches(6.45)
+SRC_H = Inches(0.72)
 
 SIZE_TITLE = Pt(28)
 SIZE_BODY = Pt(20)
