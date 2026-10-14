@@ -121,7 +121,7 @@ def footer(slide, n, evidence, source, dark=False):
     """Уровень доказательности и источник одним блоком, прижатым к ростомеру."""
     col = C['onink2'] if dark else C['muted']
     if evidence or source:
-        tb, tf = textbox(slide.shapes, MX, Inches(5.98), CONTENT_W, Inches(0.74), anchor=MSO_ANCHOR.BOTTOM,
+        tb, tf = textbox(slide.shapes, MX, Inches(5.98), CONTENT_W - Inches(0.7), Inches(0.74), anchor=MSO_ANCHOR.BOTTOM,
                          name='Доказательность и источник')
         first = True
         if evidence:
@@ -418,7 +418,7 @@ def s_refs(prs, d):
     title(s, d['title'])
     items = d.get('body') or []
     ncol = 3 if len(items) > 30 else 2
-    size = Pt(8) if len(items) <= 60 else Pt(7)
+    size = Pt(8) if len(items) <= 100 else Pt(7)
     per = (len(items) + ncol - 1) // ncol
     gap = Inches(0.3)
     colw = (CONTENT_W - gap * (ncol - 1)) / ncol
