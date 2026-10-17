@@ -193,6 +193,9 @@ def table(slide, spec, x, y, w, h, size=SIZE_TABLE, col_w=None):
         tot = sum(col_w)
         for i, cw in enumerate(col_w):
             tbl.columns[i].width = int(w * cw / tot)
+    rh = est_rows(spec, w, size, col_w)
+    for i, hh in enumerate(rh):
+        tbl.rows[i].height = int(Inches(hh))
     for r in range(nr):
         for c in range(nc):
             cell = tbl.cell(r, c)
@@ -222,25 +225,29 @@ def table(slide, spec, x, y, w, h, size=SIZE_TABLE, col_w=None):
     return gt
 
 
-def est_table_h(tbl, w, size, col_w=None):
-    """Оценка высоты таблицы после переноса строк (дюймы → EMU)."""
+def est_rows(tbl, w, size, col_w=None):
+    """Оценка высоты каждой строки таблицы после переноса (дюймы)."""
     import math
     header, rows = tbl['header'], tbl['rows']
     nc = len(header)
     cw = col_w or [1] * nc
     tot = sum(cw)
     widths = [w / 914400 * c / tot - 0.18 for c in cw]
-    char_w = size.pt / 72 * 0.5
-    line_h = size.pt / 72 * 1.2
-    total = 0.0
+    char_w = size.pt / 72 * 0.53
+    line_h = size.pt / 72 * 1.25
+    out = []
     for r in [header] + rows:
         lines = 1
         for c in range(nc):
             txt = str(r[c]) if c < len(r) else ''
             per = max(1, int(widths[c] / char_w))
             lines = max(lines, math.ceil(max(1, len(txt)) / per))
-        total += lines * line_h + 0.1
-    return Inches(total)
+        out.append(lines * line_h + 0.14)
+    return out
+
+
+def est_table_h(tbl, w, size, col_w=None):
+    return Inches(sum(est_rows(tbl, w, size, col_w)))
 
 
 def table_size(tbl):

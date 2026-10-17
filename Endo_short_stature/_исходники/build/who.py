@@ -155,6 +155,7 @@ def panel(shapes, x, y, w, h, sex, t0, t1, kind, patient, events=(), title=None,
 
 
 SEX_WORD = {'M': 'мальчики', 'F': 'девочки'}
+_FIRST = [True]      # при первом графике сокращение ИМТ расшифровывается
 
 
 def chart(shapes, x, y, w, h, sex, t0, t1, hz, bz, events=(), title=None):
@@ -164,5 +165,6 @@ def chart(shapes, x, y, w, h, sex, t0, t1, hz, bz, events=(), title=None):
     bh = h - gap - hh
     head = (title + ': ' if title else '') + f'рост для возраста, {SEX_WORD[sex]}, см'
     panel(shapes, x, y, w, hh, sex, t0, t1, 'hfa', hz, events, title=head)
-    panel(shapes, x, y + hh + gap, w, bh, sex, t0, t1, 'bfa', bz, (), title=f'ИМТ для возраста, кг/м²',
-          grid_step=2, label_step=4)
+    bt = 'Индекс массы тела (ИМТ) для возраста, кг/м²' if _FIRST[0] else 'ИМТ для возраста, кг/м²'
+    _FIRST[0] = False
+    panel(shapes, x, y + hh + gap, w, bh, sex, t0, t1, 'bfa', bz, (), title=bt, grid_step=2, label_step=4)

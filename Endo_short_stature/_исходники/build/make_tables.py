@@ -1,6 +1,6 @@
 """Таблица источников для сдачи: литература, утверждения, понятия, заголовки.
 
-python3 make_tables.py <папка _исходники> <выход.xlsx>
+python3 make_tables.py <папка _исходники> <выход.xlsx> [папка текста, по умолчанию текст_v3]
 """
 import glob
 import json
@@ -12,9 +12,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 src, out = sys.argv[1], sys.argv[2]
+folder = sys.argv[3] if len(sys.argv) > 3 else 'текст_v3'
 
 slides = []
-for f in sorted(glob.glob(os.path.join(src, 'текст', '*.json'))):
+for f in sorted(glob.glob(os.path.join(src, folder, '*.json'))):
     slides += json.load(open(f, encoding='utf-8'))
 slides.sort(key=lambda s: s['n'])
 
@@ -40,15 +41,27 @@ def sheet(ws, header, rows, widths):
     ws.freeze_panes = 'A2'
 
 
-# 1. Литература (слайд 43)
-refs = next(s for s in slides if s['n'] == 43)['body']
+# 1. Литература: из слайда литературы, а если его нет (версия автора) — из строк источника всех слайдов
+lit = next((s for s in slides if s.get('layout') == 'references'), None)
 ws = wb.active
 ws.title = 'Литература'
 rows = []
-for r in refs:
-    m = re.match(r'^(\d+)\.\s*(.*)$', r)
-    rows.append([int(m.group(1)) if m else None, m.group(2) if m else r])
-sheet(ws, ['№', 'Источник'], rows, [6, 140])
+if lit:
+    refs = lit['body']
+    for r in refs:
+        m = re.match(r'^(\d+)\.\s*(.*)$', r)
+        rows.append([int(m.group(1)) if m else None, m.group(2) if m else r, ''])
+else:
+    seen = {}
+    for s in slides:
+        for part in re.split(r';\s+(?=[A-ZÀ-ÝА-Я][\w’\'-]+(?: [A-Z]{1,3}| [A-Z][a-z]+)?[ ,])', s.get('source') or ''):
+            part = part.strip().rstrip(';')
+            if part:
+                seen.setdefault(part, []).append(s['n'])
+    refs = sorted(seen)
+    for i, r in enumerate(refs, 1):
+        rows.append([i, r, ', '.join(str(n) for n in sorted(set(seen[r])))])
+sheet(ws, ['№', 'Источник', 'Слайды'], rows, [6, 130, 18])
 
 # 2. Утверждения: все строки проверки
 ws = wb.create_sheet('Утверждения')
