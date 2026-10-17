@@ -163,7 +163,7 @@ def chart(shapes, x, y, w, h, sex, t0, t1, hz, bz, events=(), title=None):
     gap = Inches(0.55)
     hh = (h - gap) * 0.66
     bh = h - gap - hh
-    head = (title + ': ' if title else '') + f'рост для возраста, {SEX_WORD[sex]}, см'
+    head = (title + ': рост' if title else 'Рост') + f' для возраста, {SEX_WORD[sex]}, см'
     panel(shapes, x, y, w, hh, sex, t0, t1, 'hfa', hz, events, title=head)
     bt = 'Индекс массы тела (ИМТ) для возраста, кг/м²' if _FIRST[0] else 'ИМТ для возраста, кг/м²'
     _FIRST[0] = False
