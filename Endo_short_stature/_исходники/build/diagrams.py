@@ -37,9 +37,20 @@ def _box(sh, x, y, w, h, fill=None, line=None, lw=0.75, shape=MSO_SHAPE.RECTANGL
     else:
         b.line.fill.background()
     b.shadow.inherit = False
+    _no_effect(b)
     if name:
         b.name = name
     return b
+
+
+def _no_effect(shape):
+    """Тени нет и в LibreOffice: ссылка на эффект темы обнуляется."""
+    from pptx.oxml.ns import qn
+    st = shape._element.find(qn('p:style'))
+    if st is not None:
+        ef = st.find(qn('a:effectRef'))
+        if ef is not None:
+            ef.set('idx', '0')
 
 
 def _arrow(sh, x0, y0, x1, y1, col=None, w=1.5, name='Стрелка'):
@@ -165,20 +176,20 @@ def growth_plate(slide, d):
         _line(sh, x0, ys[3][0], x0 + cw, ys[3][0], col=C['axis'], w=1.0, name='Граница хряща и кости')
     # подписи зон и действие гормонов
     lx = x0 + cw + Inches(0.2)
-    zx = lx + Inches(2.55)
+    zx = lx + Inches(2.75)
     zw = MX + CONTENT_W - zx
     for i, (yy, hh) in enumerate(ys):
         z = zones[i]
         _line(sh, x0 + cw, yy + hh / 2, lx - Inches(0.03), yy + hh / 2, col=C['axis'], w=0.75)
-        _text(sh, lx, yy, Inches(2.45), hh, z['name'], size=15, color=C['ink'], anchor=MSO_ANCHOR.MIDDLE,
+        _text(sh, lx, yy, Inches(2.45), hh, z['name'], size=17, color=C['ink'], anchor=MSO_ANCHOR.MIDDLE,
               name='Зона')
         if z.get('acts'):
-            _text(sh, zx, yy, zw, hh, z['acts'], size=15, anchor=MSO_ANCHOR.MIDDLE, name='Действие', gap=2)
+            _text(sh, zx, yy, zw, hh, z['acts'], size=17, anchor=MSO_ANCHOR.MIDDLE, name='Действие', gap=3)
         if i < 3:
             _line(sh, lx, yy + hh, MX + CONTENT_W, yy + hh, col=C['rule'], w=0.5)
     if g.get('bottom'):
-        _text(sh, MX, bot + Inches(0.12), CONTENT_W, BODY_BOTTOM - bot - Inches(0.1), g['bottom'], size=16,
-              color=C['text'], name='Вывод схемы')
+        _text(sh, MX, bot + Inches(0.15), CONTENT_W, BODY_BOTTOM - bot - Inches(0.1), g['bottom'], size=18,
+              color=C['ink'], name='Вывод схемы')
 
 
 # ---------- уровни: где ломается ----------
@@ -198,25 +209,25 @@ def levels(slide, d):
     rh = (bot - top - gap * (n - 1)) / n
     lw = Inches(2.7)
     right_edge = MX + CONTENT_W - (Inches(3.6) if has_img else 0)
-    tx = MX + lw + Inches(0.35)
+    tx = MX + lw + Inches(0.3)
     tw = right_edge - tx
     for i, r in enumerate(rows):
         y = top + i * (rh + gap)
+        _box(sh, MX + lw, y, right_edge - MX - lw, rh, fill=C['paper2'], name=f'Строка: {r["name"]}')
         _box(sh, MX, y, lw, rh, fill=r.get('fill') or C['ink'], name=f'Уровень: {r["name"]}')
-        tb = _text(sh, MX + Inches(0.15), y, lw - Inches(0.3), rh, r.get('sub') or [], size=13,
-                   color=C['onink2'], anchor=MSO_ANCHOR.MIDDLE, head=r['name'], head_size=17, name='Уровень')
+        tb = _text(sh, MX + Inches(0.15), y, lw - Inches(0.3), rh, r.get('sub') or [], size=14,
+                   color=C['onink2'], anchor=MSO_ANCHOR.MIDDLE, head=r['name'], head_size=18, name='Уровень')
         for run in tb.text_frame.paragraphs[0].runs:
             run.font.color.rgb = _rgb(C['onink'])
         if i < n - 1:
             _arrow(sh, MX + lw / 2, y + rh, MX + lw / 2, y + rh + gap, col=C['axis'], w=2.0)
-        _line(sh, MX + lw, y + rh / 2, tx - Inches(0.08), y + rh / 2, col=C['axis'], w=0.75)
-        _text(sh, tx, y, tw, rh, r['text'], size=r.get('size', 16), anchor=MSO_ANCHOR.MIDDLE, name='Что происходит',
-              gap=3)
+        _text(sh, tx, y, tw - Inches(0.2), rh, r['text'], size=r.get('size', 19), anchor=MSO_ANCHOR.MIDDLE,
+              name='Что происходит', gap=4)
     if has_img:
         _image(sh, img['path'], right_edge + Inches(0.3), top, Inches(3.3), bot - top, img.get('credit'))
     if g.get('bottom'):
-        _text(sh, MX, bot + Inches(0.15), CONTENT_W, BODY_BOTTOM - bot - Inches(0.15), g['bottom'], size=16,
-              name='Вывод схемы')
+        _text(sh, MX, bot + Inches(0.18), CONTENT_W, BODY_BOTTOM - bot - Inches(0.15), g['bottom'], size=18,
+              color=C['ink'], name='Вывод схемы')
 
 
 # ---------- эстрогены: путь и три сценария ----------
@@ -230,14 +241,14 @@ def estrogen(slide, d):
     n = len(steps)
     gap = Inches(0.45)
     bw = (CONTENT_W - gap * (n - 1)) / n
-    bh = Inches(1.35)
+    bh = Inches(1.55)
     for i, st in enumerate(steps):
         x = MX + i * (bw + gap)
         _box(sh, x, top, bw, bh, fill=C['ink'] if i == 0 else C['paper2'], line=None if i == 0 else C['rule'],
              name=f'Шаг: {st["name"]}')
         tb = _text(sh, x + Inches(0.12), top + Inches(0.08), bw - Inches(0.24), bh - Inches(0.16),
-                   st.get('text') or [], size=13, color=C['onink2'] if i == 0 else C['text'], head=st['name'],
-                   head_size=16, anchor=MSO_ANCHOR.MIDDLE, name='Шаг')
+                   st.get('text') or [], size=15, color=C['onink2'] if i == 0 else C['text'], head=st['name'],
+                   head_size=18, anchor=MSO_ANCHOR.MIDDLE, name='Шаг')
         if i == 0:
             for run in tb.text_frame.paragraphs[0].runs:
                 run.font.color.rgb = _rgb(C['onink'])
@@ -245,18 +256,19 @@ def estrogen(slide, d):
             _arrow(sh, x + bw + Inches(0.05), top + bh / 2, x + bw + gap - Inches(0.05), top + bh / 2, w=2.0)
     # сценарии
     sc = g['scenarios']                # [{'name','text'}]
-    y = top + bh + Inches(0.35)
+    y = top + bh + Inches(0.45)
     m = len(sc)
     sw = (CONTENT_W - Inches(0.3) * (m - 1)) / m
-    sh_h = Inches(1.45)
+    sh_h = Inches(1.55)
     for i, it in enumerate(sc):
         x = MX + i * (sw + Inches(0.3))
         _line(sh, x, y, x + sw, y, col=C['height'], w=2.0, name='Сценарий')
-        _text(sh, x, y + Inches(0.08), sw, sh_h, it['text'], size=14, head=it['name'], head_size=16,
+        _text(sh, x, y + Inches(0.1), sw, sh_h, it['text'], size=17, head=it['name'], head_size=18,
               name='Сценарий', gap=2)
     if g.get('bottom'):
         by = y + sh_h + Inches(0.15)
-        _text(sh, MX, by, CONTENT_W, BODY_BOTTOM - by, g['bottom'], size=15, name='Вывод схемы', gap=3)
+        _text(sh, MX, by, CONTENT_W, BODY_BOTTOM - by, g['bottom'], size=18, color=C['ink'], name='Вывод схемы',
+              gap=3)
 
 
 # ---------- ген SHOX ----------
@@ -267,41 +279,45 @@ def shox(slide, d):
     top = BODY_Y + Inches(0.1)
     img = g.get('image')
     has_img = img and os.path.exists(os.path.join(HERE, '..', img['path']))
-    # две X-хромосомы и одна: слева
-    def chrom(x, y, label, faded=False):
-        w, h = Inches(0.42), Inches(2.6)
-        p_h = h * 0.38
-        col = C['centile'] if faded else C['height']
-        _box(sh, x, y, w, p_h, fill=col, shape=MSO_SHAPE.ROUNDED_RECTANGLE, name='Короткое плечо')
-        _box(sh, x, y + p_h + Inches(0.06), w, h - p_h - Inches(0.06), fill=col, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
-             name='Длинное плечо')
-        if not faded:
-            _box(sh, x - Inches(0.03), y + Inches(0.05), w + Inches(0.06), Inches(0.22), fill=C['weight'],
+    ch_h = Inches(1.7) if has_img else Inches(2.7)
+
+    def chrom(x, y, label, missing=False):
+        from pptx.enum.dml import MSO_LINE_DASH_STYLE
+        w = Inches(0.42)
+        p_h = ch_h * 0.38
+        for yy, hh, nm in ((y, p_h, 'Короткое плечо'), (y + p_h + Inches(0.06), ch_h - p_h - Inches(0.06),
+                                                         'Длинное плечо')):
+            b = _box(sh, x, yy, w, hh, fill=None if missing else C['height'],
+                     line=C['axis'] if missing else None, lw=1.0, shape=MSO_SHAPE.ROUNDED_RECTANGLE, name=nm)
+            if missing:
+                b.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+        if not missing:
+            _box(sh, x - Inches(0.03), y + Inches(0.05), w + Inches(0.06), Inches(0.2), fill=C['weight'],
                  name='SHOX')
-        _text(sh, x - Inches(0.3), y + h + Inches(0.08), w + Inches(0.6), Inches(0.3), label, size=13,
+        _text(sh, x - Inches(0.3), y + ch_h + Inches(0.06), w + Inches(0.6), Inches(0.3), label, size=14,
               color=C['muted'], align=PP_ALIGN.CENTER, name='Подпись хромосомы')
-    cx = MX + Inches(0.1)
-    chrom(cx, top + Inches(0.35), 'X')
-    chrom(cx + Inches(0.7), top + Inches(0.35), 'X')
-    _text(sh, cx - Inches(0.1), top - Inches(0.1), Inches(1.6), Inches(0.35), g['left_label'], size=14,
-          color=C['ink'], align=PP_ALIGN.CENTER, name='Норма')
-    cx2 = MX + Inches(2.1)
-    chrom(cx2, top + Inches(0.35), 'X')
-    chrom(cx2 + Inches(0.7), top + Inches(0.35), '', faded=True)
-    _text(sh, cx2 - Inches(0.1), top - Inches(0.1), Inches(1.6), Inches(0.35), g['right_label'], size=14,
-          color=C['ink'], align=PP_ALIGN.CENTER, name='Тернер')
-    # подпись гена
-    _line(sh, cx2 + Inches(0.42), top + Inches(0.5), cx2 + Inches(1.6), top + Inches(0.5), col=C['weight'], w=1.0)
-    _text(sh, cx2 + Inches(1.65), top + Inches(0.3), Inches(1.8), Inches(0.45), g['gene_label'], size=13,
-          color=C['ink'], name='Ген')
-    # текст справа
-    tx = MX + Inches(4.1)
-    tw = MX + CONTENT_W - tx - (Inches(3.5) if has_img else 0)
-    _text(sh, tx, top + Inches(0.6), tw, BODY_BOTTOM - top - Inches(0.7), g['points'], size=16, name='Механизм',
-          gap=8)
+
+    y0 = top + Inches(0.45)
+    cx = MX + Inches(0.15)
+    chrom(cx, y0, 'X')
+    chrom(cx + Inches(0.7), y0, 'X')
+    _text(sh, cx - Inches(0.25), top, Inches(1.65), Inches(0.35), g['left_label'], size=15, color=C['ink'],
+          align=PP_ALIGN.CENTER, name='Норма')
+    cx2 = MX + Inches(2.05)
+    chrom(cx2, y0, 'X')
+    chrom(cx2 + Inches(0.7), y0, '', missing=True)
+    _text(sh, cx2 - Inches(0.25), top, Inches(1.65), Inches(0.35), g['right_label'], size=15, color=C['ink'],
+          align=PP_ALIGN.CENTER, name='Тернер')
+    # подпись гена под парой «норма»
+    _text(sh, MX, y0 + ch_h + Inches(0.4), Inches(3.6), Inches(0.35), g['gene_label'], size=14, color=C['weight'],
+          name='Ген')
+    tx = MX + Inches(3.9)
+    tw = MX + CONTENT_W - tx
+    _text(sh, tx, top + Inches(0.1), tw, BODY_BOTTOM - top - Inches(0.2), g['points'], size=18, name='Механизм',
+          gap=10)
     if has_img:
-        _image(sh, img['path'], MX + CONTENT_W - Inches(3.3), top, Inches(3.3), BODY_BOTTOM - top - Inches(0.1),
-               img.get('credit'))
+        iy = y0 + ch_h + Inches(0.85)
+        _image(sh, img['path'], MX, iy, Inches(3.5), BODY_BOTTOM - iy, img.get('credit'))
 
 
 DRAW = {'growth_plate': growth_plate, 'levels': levels, 'estrogen': estrogen, 'shox': shox}

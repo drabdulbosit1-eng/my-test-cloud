@@ -129,6 +129,8 @@ def panel(shapes, x, y, w, h, sex, t0, t1, kind, patient, events=(), title=None,
         dot.line.color.rgb = _rgb('FFFFFF')
         dot.line.width = Pt(0.75)
         dot.shadow.inherit = False
+        from diagrams import _no_effect
+        _no_effect(dot)
         dot.name = f'{kind}: точка {a}'
 
     # события

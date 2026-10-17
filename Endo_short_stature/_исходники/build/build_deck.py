@@ -477,6 +477,10 @@ def build(folder, out):
             s_dark(prs, d)
         else:
             s_content(prs, d)
+    # без теней: обнулить ссылку на эффекты темы у всех фигур (LibreOffice иначе рисует тень)
+    for sl in prs.slides:
+        for ef in sl._element.iter(qn('a:effectRef')):
+            ef.set('idx', '0')
     prs.core_properties.title = 'Эндокринные причины низкорослости у детей и подростков'
     prs.core_properties.language = 'ru-RU'
     prs.save(out)
