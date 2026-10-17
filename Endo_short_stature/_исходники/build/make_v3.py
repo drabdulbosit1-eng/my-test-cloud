@@ -197,3 +197,21 @@ if os.path.exists(mpath):
         data.sort(key=lambda d: d['n'])
         json.dump(data, open(os.path.join(out, name), 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
     print('механизмы:', [m['n'] if 'n' in m else m.get('replace_old') for m in mech])
+
+# Изображения: изображения.json, ключ — номер слайда версии 3.
+# {"4": {"path": "изображения/файл.jpg", "credit": "Автор, Wikimedia Commons, CC BY-SA 4.0"}}
+ipath = os.path.join(src, 'изображения.json')
+if os.path.exists(ipath):
+    imgs = json.load(open(ipath, encoding='utf-8'))
+    for f in glob.glob(os.path.join(out, '*.json')):
+        data = json.load(open(f, encoding='utf-8'))
+        for s in data:
+            im = imgs.get(str(s['n']))
+            if not im:
+                continue
+            if s.get('diagram'):
+                s['diagram']['image'] = im
+            else:
+                s['image'] = im
+        json.dump(data, open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+    print('изображения:', sorted(imgs, key=int))

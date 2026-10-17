@@ -437,6 +437,12 @@ def s_content(prs, d):
             add_runs(tf.paragraphs[0], call['label'], Pt(16), C['muted'])
             bullets(s, items, MX + cw + Inches(0.5), top + Inches(0.2), CONTENT_W - cw - Inches(0.5),
                     bottom - top - Inches(0.2))
+        elif d.get('image') and os.path.exists(os.path.join(os.path.dirname(__file__), '..', d['image']['path'])):
+            import diagrams
+            iw = Inches(4.4)
+            bullets(s, items, MX, top + Inches(0.15), CONTENT_W - iw - Inches(0.4), bottom - top - Inches(0.15))
+            diagrams._image(s.shapes, d['image']['path'], MX + CONTENT_W - iw, top + Inches(0.1), iw,
+                            bottom - top - Inches(0.1), d['image'].get('credit'))
         else:
             bullets(s, items, MX, top + Inches(0.15), Inches(10.5), bottom - top - Inches(0.15))
     footer(s, n, d.get('evidence'), d.get('source'))
