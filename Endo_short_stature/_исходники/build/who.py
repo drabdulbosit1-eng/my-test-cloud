@@ -165,4 +165,4 @@ def chart(shapes, x, y, w, h, sex, t0, t1, hz, bz, events=(), title=None):
     head = (title + ': ' if title else '') + f'рост для возраста, {SEX_WORD[sex]}, см'
     panel(shapes, x, y, w, hh, sex, t0, t1, 'hfa', hz, events, title=head)
     panel(shapes, x, y + hh + gap, w, bh, sex, t0, t1, 'bfa', bz, (), title=f'ИМТ для возраста, кг/м²',
-          grid_step=1, label_step=2)
+          grid_step=2, label_step=4)

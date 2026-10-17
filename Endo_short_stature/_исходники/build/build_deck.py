@@ -21,6 +21,7 @@ from style import (BODY_BOTTOM, BODY_Y, C, CONTENT_W, EVID_Y, FONT_BODY, FONT_HE
                    SIZE_BODY, SIZE_EVID, SIZE_SRC, SIZE_TABLE, SIZE_TITLE, SLIDE_H, SLIDE_W, SRC_H, SRC_TOP, SRC_Y,
                    TITLE_H, TITLE_Y, TOTAL)
 import growth
+import who
 from figures import FIGS
 
 NB = ' '
@@ -38,6 +39,7 @@ def typo(s):
     s = re.sub(r'(\d) (–|−) (\d)', r'\1\2\3', s)
     s = re.sub(r'(\d)–(\d)', '\\1–\u2060\\2', s)   # не разрывать диапазон «3–6»
     s = s.replace('св. Т4', 'св.' + NB + 'Т4')
+    s = re.sub(r'(?<=[А-ЯA-Z])-(?=\d)', '-\u2060', s)       # ИФР-1, ИФРСБ-3 без переноса
     return s
 
 
@@ -243,7 +245,9 @@ def est_table_h(tbl, w, size, col_w=None):
 
 def table_size(tbl):
     chars = sum(len(str(c)) for r in tbl['rows'] for c in r)
-    return Pt(15) if chars <= 420 else (Pt(14) if chars <= 600 else Pt(13))
+    if chars <= 330:
+        return Pt(18)
+    return Pt(16) if chars <= 420 else (Pt(14) if chars <= 600 else Pt(13))
 
 
 def notes(slide, text):
@@ -258,8 +262,10 @@ def caption(slide, x, y, w, text='схема, а не данные конкре�
 
 
 def legend(slide, x, y):
-    for i, (col, txt) in enumerate(((C['height'], 'пример: рост'), (C['weight'], 'пример: масса'),
-                                    (C['band'], 'норма: 3–97-й центиль'))):
+    items_ = ((C['height'], 'пример: рост'), (C['weight'], 'пример: ИМТ'), (C['band'], 'ВОЗ: 3–97-й центиль')) \
+        if who.available() else ((C['height'], 'пример: рост'), (C['weight'], 'пример: масса'),
+                                 (C['band'], 'норма: 3–97-й центиль'))
+    for i, (col, txt) in enumerate(items_):
         r = slide.shapes.add_shape(1, int(x + Inches(2.2) * i), int(y + Inches(0.07)), int(Inches(0.3)),
                                    int(Inches(0.1)))
         r.fill.solid()
@@ -339,7 +345,24 @@ def s_content(prs, d):
     if tbl and not tbl.get('rows'):
         tbl = None
     top, bottom = BODY_Y, BODY_BOTTOM
-    if fig and fig['type'] == 'growth':
+    if fig and fig['type'] == 'growth' and who.available():
+        fw = Inches(8.2) if items else CONTENT_W
+        who.chart(s.shapes, MX, top + Inches(0.3), fw, bottom - top - Inches(0.95), fig['sex'], fig['t0'], fig['t1'],
+                  fig['hz'], fig['wz'], fig.get('events', ()))
+        legend(s, MX, bottom - Inches(0.3))
+        if items:
+            bullets(s, items, MX + fw + Inches(0.4), top + Inches(0.3), CONTENT_W - fw - Inches(0.4),
+                    bottom - top - Inches(0.3), size=Pt(18))
+    elif fig and fig['type'] == 'two_growth' and who.available():
+        half = (CONTENT_W - Inches(0.5)) / 2
+        h = bottom - top - Inches(0.95) - (Inches(0.36) * len(items) + Inches(0.15) if items else 0)
+        for i, g in enumerate(fig['charts']):
+            who.chart(s.shapes, MX + i * (half + Inches(0.5)), top + Inches(0.3), half, h, g['sex'], g['t0'], g['t1'],
+                      g['hz'], g['wz'], g.get('events', ()), title=g['title'])
+        legend(s, MX, top + h + Inches(0.6))
+        if items:
+            bullets(s, items, MX, top + h + Inches(0.95), CONTENT_W, Inches(0.36) * len(items), size=Pt(17), gap=4)
+    elif fig and fig['type'] == 'growth':
         fx, fw = MX, Inches(7.4)
         growth.growth_chart(s.shapes, fx, top, fw, bottom - top - Inches(0.85), fig['sex'], fig['t0'], fig['t1'],
                             fig['hz'], fig['wz'], fig.get('events', ()))
